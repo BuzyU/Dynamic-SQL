@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dynamic Categories - Profile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="data:,">
+  <script defer src="theme.js"></script>
+  <script defer src="ui.js"></script>
+  <script type="module" defer src="firebase-config.js"></script>
+  <script type="module" defer src="auth.js"></script>
+  <script type="module" defer src="profile.js"></script>
+</head>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <header class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="dashboard.html" class="font-bold text-lg hover:text-blue-600 transition">📁 Dynamic Categories</a>
+      <div class="flex items-center gap-2">
+        <button id="themeToggle" class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition">🌙 Theme</button>
+        <button id="signOutBtn" class="px-3 py-1.5 rounded bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 text-sm hover:opacity-90 transition">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-8">
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold mb-2">Profile Settings</h1>
+      <p class="text-gray-600 dark:text-gray-400">Manage your account information and preferences</p>
+    </div>
+
+    <!-- Account Information -->
+    <section class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+      <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <h2 class="font-semibold text-lg">Account Information</h2>
+      </div>
+      <form id="profileForm" class="p-6 space-y-4">
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">User ID</label>
+            <input id="uid" readonly class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-sm" />
+            <p class="text-xs text-gray-500 mt-1">Your unique identifier</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Email Address</label>
+            <input id="email" readonly class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-sm" />
+            <p class="text-xs text-gray-500 mt-1">Cannot be changed</p>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1" for="displayName">Display Name</label>
+          <input id="displayName" placeholder="Your name" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <p class="text-xs text-gray-500 mt-1">This name will be displayed in your profile</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1" for="photoURL">Photo URL</label>
+          <input id="photoURL" type="url" placeholder="https://example.com/photo.jpg" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <p class="text-xs text-gray-500 mt-1">Paste a URL to your profile picture (must be a valid image URL)</p>
+          <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-medium mb-2">Current Photo</h3>
+            <div class="flex items-center gap-4">
+              <div class="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
+                <img id="profilePhoto" class="w-full h-full object-cover" style="display: none" alt="Profile photo">
+                <span id="noPhotoText" class="text-sm text-gray-500">No photo</span>
+              </div>
+              <div class="flex-1">
+                <p class="text-sm text-gray-600 dark:text-gray-400">Your profile photo will be visible to other users in the system.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">Sign-in Providers</label>
+          <div id="providers" class="flex items-center gap-2 text-sm bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded"></div>
+        </div>
+
+        <div class="flex items-center gap-3 pt-2">
+          <button type="submit" class="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-medium">
+            💾 Save Changes
+          </button>
+          <a href="dashboard.html" class="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition">
+            ← Back to Dashboard
+          </a>
+        </div>
+      </form>
+    </section>
+
+    <!-- Security -->
+    <section class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+      <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <h2 class="font-semibold text-lg">Security</h2>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1">
+            <h3 class="font-medium mb-1">Password</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Reset your password via email
+            </p>
+          </div>
+          <button id="resetBtn" class="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition">
+            🔑 Reset Password
+          </button>
+        </div>
+
+        <div class="flex items-start justify-between gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div class="flex-1">
+            <h3 class="font-medium mb-1 text-red-600">Delete Account</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Permanently delete your account and all data
+            </p>
+          </div>
+          <button id="deleteAccount" class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 text-sm transition">
+            🗑️ Delete Account
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="bg-white dark:bg-gray-800 rounded-lg shadow">
+      <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <h2 class="font-semibold text-lg">Account Statistics</h2>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="accountStats">
+          <div class="text-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+            <div class="text-2xl font-bold text-blue-600" id="statCategories">-</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Categories</div>
+          </div>
+          <div class="text-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+            <div class="text-2xl font-bold text-green-600" id="statActive">-</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Active</div>
+          </div>
+          <div class="text-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+            <div class="text-2xl font-bold text-orange-600" id="statArchived">-</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Archived</div>
+          </div>
+          <div class="text-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+            <div class="text-2xl font-bold text-purple-600" id="statCreated">-</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Created</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="text-center text-xs text-gray-500 py-6 border-t border-gray-200 dark:border-gray-800 mt-8">
+    <p>&copy; <span id="year"></span> Dynamic Categories | Made with ❤️</p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+
+  <script type="module">
+    import { onAuthStateChanged, updateProfile, sendPasswordResetEmail, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+    import { auth, db } from './firebase-config.js';
+    import { collection, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    const uidEl = document.getElementById('uid');
+    const emailEl = document.getElementById('email');
+    const nameEl = document.getElementById('displayName');
+    const photoEl = document.getElementById('photoURL');
+    const form = document.getElementById('profileForm');
+    const providersEl = document.getElementById('providers');
+    const resetBtn = document.getElementById('resetBtn');
+    const deleteAccountBtn = document.getElementById('deleteAccount');
+
+    let currentUser = null;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      currentUser = user;
+      uidEl.value = user.uid;
+      emailEl.value = user.email || '';
+      nameEl.value = user.displayName || '';
+      photoEl.value = user.photoURL || '';
+      
+      const providers = (user.providerData || []).map(p => {
+        const icons = {
+          'google.com': '🔵 Google',
+          'password': '🔑 Email/Password'
+        };
+        return icons[p.providerId] || p.providerId;
+      });
+      providersEl.textContent = providers.join(', ') || '—';
+
+      // Load stats
+      await loadStats(user.uid);
+    });
+
+    async function loadStats(userId) {
+      try {
+        const q = query(collection(db, 'categories'), where('userId', '==', userId));
+        const snapshot = await getDocs(q);
+        
+        const categories = snapshot.docs.map(d => d.data());
+        const total = categories.length;
+        const archived = categories.filter(c => c.archived).length;
+        const active = total - archived;
+        
+        // Get account creation date
+        const createdDate = currentUser.metadata.creationTime 
+          ? new Date(currentUser.metadata.creationTime).toLocaleDateString()
+          : 'Unknown';
+
+        document.getElementById('statCategories').textContent = total;
+        document.getElementById('statActive').textContent = active;
+        document.getElementById('statArchived').textContent = archived;
+        document.getElementById('statCreated').textContent = createdDate;
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentUser) return;
+
+      const loadingClose = window.UI?.loading('Updating profile...');
+
+      try {
+        await updateProfile(currentUser, {
+          displayName: nameEl.value.trim() || null,
+          photoURL: photoEl.value.trim() || null,
+        });
+        
+        window.UI?.success('Profile updated successfully!');
+      } catch (err) {
+        console.error('Update error:', err);
+        window.UI?.error('Failed to update profile: ' + err.message);
+      } finally {
+        loadingClose?.();
+      }
+    });
+
+    resetBtn.addEventListener('click', async () => {
+      const email = currentUser?.email;
+      if (!email) {
+        window.UI?.error('No email associated with this account');
+        return;
+      }
+
+      const confirm = await window.UI?.confirm(
+        `A password reset link will be sent to ${email}`,
+        {
+          title: 'Reset Password',
+          okText: 'Send Email',
+          type: 'question'
+        }
+      );
+
+      if (!confirm) return;
+
+      const loadingClose = window.UI?.loading('Sending reset email...');
+
+      try {
+        await sendPasswordResetEmail(auth, email);
+        window.UI?.success('Password reset email sent! Check your inbox.');
+      } catch (err) {
+        console.error('Reset error:', err);
+        window.UI?.error('Failed to send reset email: ' + err.message);
+      } finally {
+        loadingClose?.();
+      }
+    });
+
+    deleteAccountBtn.addEventListener('click', async () => {
+      if (!currentUser) return;
+
+      const confirm1 = await window.UI?.confirm(
+        'This will permanently delete your account and ALL your categories. This action cannot be undone.',
+        {
+          title: 'Delete Account?',
+          okText: 'I understand, continue',
+          type: 'danger',
+          dangerous: true
+        }
+      );
+
+      if (!confirm1) return;
+
+      const confirm2 = await window.UI?.confirm(
+        'Are you absolutely sure? Type DELETE to confirm.',
+        {
+          title: 'Final Confirmation',
+          okText: 'Delete Everything',
+          type: 'danger',
+          dangerous: true
+        }
+      );
+
+      if (!confirm2) return;
+
+      const loadingClose = window.UI?.loading('Deleting account...');
+
+      try {
+        // Delete all user categories
+        const q = query(collection(db, 'categories'), where('userId', '==', currentUser.uid));
+        const snapshot = await getDocs(q);
+        
+        const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, 'categories', d.id)));
+        await Promise.all(deletePromises);
+
+        // Delete user account
+        await deleteUser(currentUser);
+        
+        window.UI?.success('Account deleted successfully');
+        setTimeout(() => window.location.href = 'index.html', 1000);
+      } catch (err) {
+        console.error('Delete error:', err);
+        
+        if (err.code === 'auth/requires-recent-login') {
+          window.UI?.error('For security, please sign in again to delete your account.');
+        } else {
+          window.UI?.error('Failed to delete account: ' + err.message);
+        }
+      } finally {
+        loadingClose?.();
+      }
+    });
+  </script>
+</body>
+</html>

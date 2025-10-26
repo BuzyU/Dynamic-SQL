@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dynamic Categories - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="data:,">
+  <script defer src="theme.js"></script>
+  <script defer src="ui.js"></script>
+  <script type="module" defer src="firebase-config.js"></script>
+  <script type="module" defer src="auth.js"></script>
+  <script type="module" defer src="dashboard.js"></script>
+  <style>
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <header class="border-b border-gray-200 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-800 z-10 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3">
+      <!-- Breadcrumb Navigation -->
+      <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
+        <button id="backToSystems" class="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
+          <span>←</span>
+          <span>All Systems</span>
+        </button>
+        <span>/</span>
+        <span id="systemName" class="font-medium text-gray-900 dark:text-gray-100">Loading...</span>
+      </div>
+      
+      <!-- Main Header -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <h1 class="font-bold text-lg">📂 Categories</h1>
+          <div class="hidden md:flex items-center gap-2 text-xs">
+            <kbd class="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">Ctrl+F</kbd> Search
+            <kbd class="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded ml-2">Ctrl+E</kbd> Expand
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- In systems.html, dashboard.html, etc. -->
+            <a href="documentation.html" class="text-sm hover:underline">📖 Docs</a>
+          <a href="profile.html" class="text-sm hover:underline hidden sm:inline">Profile</a>
+          <button id="themeToggle" class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">🌙 Theme</button>
+          <button id="signOutBtn" class="px-3 py-1.5 rounded bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 text-sm hover:opacity-90">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-6 grid lg:grid-cols-4 gap-6">
+    <!-- Left Sidebar: Add & Controls -->
+    <section class="lg:col-span-1 space-y-4">
+      <!-- Add Category -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <h2 class="font-semibold mb-3 flex items-center gap-2">
+          <span>➕</span> Add Category
+        </h2>
+        <form id="addCategoryForm" class="space-y-3" aria-label="Add category">
+          <div>
+            <label class="sr-only" for="categoryName">Name</label>
+            <input id="categoryName" required placeholder="Category name" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label class="sr-only" for="categoryNote">Note</label>
+            <textarea id="categoryNote" placeholder="Optional note..." rows="2" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-600 dark:text-gray-400" for="parentSelect">Parent Category</label>
+            <select id="parentSelect" class="w-full mt-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+          </div>
+          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500">Add Category</button>
+          <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 pt-1">
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="lockAfterAdd" class="rounded border-gray-300 dark:border-gray-600" />
+              <span>Lock after adding</span>
+            </label>
+            <button type="button" id="unlockAdd" class="hidden px-2 py-1 rounded border border-gray-300 dark:border-gray-700 text-xs hover:bg-gray-50 dark:hover:bg-gray-700">🔓 Unlock</button>
+          </div>
+          <p id="addLockStatus" class="hidden text-xs text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded">🔒 Adding is locked. Click unlock to add more.</p>
+        </form>
+      </div>
+
+      <!-- Stats -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <h3 class="font-semibold mb-2 text-sm">📊 Statistics</h3>
+        <div id="stats"></div>
+      </div>
+
+      <!-- Import/Export -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <h3 class="font-semibold mb-3 text-sm">💾 Data</h3>
+        <div class="space-y-2">
+          <input type="file" id="importFile" accept="application/json" class="text-xs w-full" />
+          <div class="grid grid-cols-2 gap-2">
+            <button id="importBtn" class="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 text-xs hover:bg-gray-50 dark:hover:bg-gray-700">Import</button>
+            <button id="exportBtn" class="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 text-xs hover:bg-gray-50 dark:hover:bg-gray-700">Export</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content: Categories -->
+    <section class="lg:col-span-3 bg-white dark:bg-gray-800 rounded-lg shadow">
+      <!-- Toolbar -->
+      <div class="border-b border-gray-200 dark:border-gray-700 p-4">
+        <div class="flex items-center justify-between mb-3 gap-3 flex-wrap">
+          <h2 class="font-semibold text-lg">Your Categories</h2>
+          <div class="flex items-center gap-2">
+            <label class="sr-only" for="searchInput">Search</label>
+            <input id="searchInput" placeholder="🔍 Search..." class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48" />
+            <select id="sortSelect" class="px-2 py-1.5 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="createdAt">Sort: Created</option>
+              <option value="updatedAt">Sort: Updated</option>
+              <option value="name">Sort: Name</option>
+            </select>
+            <button id="viewMode" class="text-xs px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">View: tree</button>
+          </div>
+        </div>
+        
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <button id="expandAll" class="text-xs px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">➕ Expand all</button>
+            <button id="collapseAll" class="text-xs px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">➖ Collapse all</button>
+            <button id="showArchived" class="text-xs px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">Show Archived</button>
+            <div id="count" class="text-xs text-gray-500"></div>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <button id="selectAll" class="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">Select All</button>
+            <button id="deselectAll" class="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">Deselect</button>
+            <button id="bulkDelete" class="hidden text-xs px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700">Delete selected</button>
+            <button id="duplicateBtn" class="hidden text-xs px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-700">Duplicate selected</button>
+            <button id="archiveBtn" class="hidden text-xs px-3 py-1.5 rounded bg-orange-600 text-white hover:bg-orange-700">Archive selected</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Bar -->
+      <div class="flex items-center justify-between px-4 py-2 text-xs text-gray-500 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+        <div id="syncStatus" class="flex items-center gap-2">Connecting…</div>
+        <div id="networkStatus"></div>
+      </div>
+
+      <!-- Error Display -->
+      <div id="syncError" class="hidden mx-4 mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-600 dark:text-red-400">
+        <span id="syncErrorText"></span>
+        <button id="retrySync" class="ml-2 text-xs px-2 py-1 rounded border border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-950">Retry</button>
+      </div>
+
+      <!-- Content Area -->
+      <div class="p-4">
+        <div id="loading" class="text-sm text-gray-500 text-center py-8">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p class="mt-2">Loading categories…</p>
+        </div>
+        <div id="emptyState" class="hidden text-center py-12">
+          <div class="text-6xl mb-4">📂</div>
+          <p class="text-gray-500 mb-2">No categories yet</p>
+          <p class="text-sm text-gray-400">Add your first category to get started!</p>
+        </div>
+        <div id="tree" class="text-sm" role="tree" aria-label="Category tree"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Category Template -->
+  <template id="categoryItemTemplate">
+    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-2 hover:shadow-md transition fade-in">
+      <div class="flex items-start gap-3">
+        <input type="checkbox" class="selectCheckbox mt-1 rounded border-gray-300 dark:border-gray-600 cursor-pointer" />
+        
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+              <button class="toggleBtn text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0" aria-expanded="false" aria-label="Toggle children">▸</button>
+              <span class="name font-medium truncate"></span>
+              <input class="nameInput hidden px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm flex-1" />
+            </div>
+            
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <button class="addChild text-xs px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700 transition" title="Add child">➕</button>
+              <button class="editBtn text-xs px-2 py-1 rounded bg-yellow-500 text-white hover:bg-yellow-600 transition" title="Edit">✏️</button>
+              <button class="moveBtn text-xs px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition" title="Move">🔀</button>
+              <button class="duplicateNode text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 transition" title="Duplicate">📋</button>
+              <button class="viewRecords text-xs px-2 py-1 rounded bg-purple-600 text-white hover:bg-purple-700 transition" title="Add Records">📄</button>
+              <button class="archiveNode text-xs px-2 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 transition" title="Archive">📦</button>
+              <select class="parentPicker hidden text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900"></select>
+              <button class="saveBtn hidden text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700">💾 Save</button>
+              <button class="cancelBtn hidden text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">✖️</button>
+              <button class="deleteBtn text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 transition" title="Delete">🗑️</button>
+            </div>
+          </div>
+          
+          <div class="note text-sm text-gray-600 dark:text-gray-400 mt-1 pl-10"></div>
+          <div class="tags flex flex-wrap gap-1 mt-2 pl-10"></div>
+          <div class="children mt-3 ml-6 hidden border-l-2 border-gray-200 dark:border-gray-700 pl-3"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <footer class="text-center text-xs text-gray-500 py-6 border-t border-gray-200 dark:border-gray-800 mt-8">
+    <p>&copy; <span id="year"></span> Dynamic Categories | Made with ❤️</p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

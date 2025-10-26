@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>System Documentation - ER Diagram</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="data:,">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    
+    .entity-box {
+      transition: all 0.2s ease;
+    }
+    
+    .entity-box:hover {
+      transform: scale(1.05);
+    }
+
+    .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #3b82f6;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .relation-line {
+      stroke: #64748b;
+      stroke-width: 2;
+      fill: none;
+      marker-end: url(#arrowhead);
+    }
+
+    .dark .relation-line {
+      stroke: #94a3b8;
+    }
+
+    .tab-button.active {
+      border-bottom-color: #3b82f6;
+      color: #3b82f6;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <!-- Header -->
+  <header class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <h1 class="font-bold text-lg">📚 System Documentation</h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="systems.html" class="text-sm hover:text-blue-600 transition">← Back to Systems</a>
+          <button id="themeToggle" class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition">🌙 Theme</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-8">
+    <div id="root"></div>
+  </main>
+
+  <!-- SVG Definitions -->
+  <svg width="0" height="0">
+    <defs>
+      <marker
+        id="arrowhead"
+        viewBox="0 0 10 10"
+        refX="9"
+        refY="5"
+        markerWidth="6"
+        markerHeight="6"
+        orient="auto"
+      >
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b" />
+      </marker>
+    </defs>
+  </svg>
+
+  <script defer src="theme.js"></script>
+  
+  <!-- Load Firebase first -->
+  <script type="module">
+    import { auth, db } from './firebase-config.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+    import { collection, getDocs, query, where, limit } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+    
+    window.firebaseModules = { auth, db, onAuthStateChanged, collection, getDocs, query, where, limit };
+  </script>
+  
+  <!-- ER Diagram Component -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function App() {
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [collections, setCollections] = useState({});
+      const [stats, setStats] = useState({});
+      const [currentUser, setCurrentUser] = useState(null);
+      const [activeTab, setActiveTab] = useState('diagram');
+
+      useEffect(() => {
+        const initializeFirebase = async () => {
+          try {
+            const checkFirebase = setInterval(() => {
+              if (window.firebaseModules) {
+                clearInterval(checkFirebase);
+                setupAuth();
+              }
+            }, 100);
+
+            setTimeout(() => {
+              clearInterval(checkFirebase);
+              if (!window.firebaseModules) {
+                setError('Failed to load Firebase modules');
+                setLoading(false);
+              }
+            }, 10000);
+          } catch (err) {
+            console.error('Error initializing Firebase:', err);
+            setError('Failed to initialize Firebase');
+            setLoading(false);
+          }
+        };
+
+        const setupAuth = () => {
+          const { auth, onAuthStateChanged } = window.firebaseModules;
+          
+          onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+              setError('Please sign in to view database schema');
+              setLoading(false);
+              return;
+            }
+
+            setCurrentUser(user);
+
+            try {
+              const schema = await analyzeDatabase(user.uid);
+              setCollections(schema.collections);
+              setStats(schema.stats);
+              setLoading(false);
+            } catch (err) {
+              console.error('Error analyzing database:', err);
+              setError('Failed to analyze database: ' + err.message);
+              setLoading(false);
+            }
+          });
+        };
+
+        initializeFirebase();
+      }, []);
+
+      const analyzeDatabase = async (userId) => {
+        const { db, collection, getDocs, query, where, limit } = window.firebaseModules;
+        
+        const collectionNames = ['users', 'systems', 'categories', 'records', 'relations', 'customFields', 'relationTypes'];
+        const schema = { collections: {}, stats: {} };
+
+        for (const collectionName of collectionNames) {
+          try {
+            const colRef = collection(db, collectionName);
+            let q;
+            
+            if (collectionName === 'users') {
+              q = query(colRef, where('__name__', '==', userId), limit(1));
+            } else {
+              q = query(colRef, where('userId', '==', userId), limit(10));
+            }
+
+            const snapshot = await getDocs(q);
+            const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            const fields = new Set();
+            const fieldTypes = {};
+            const foreignKeys = [];
+
+            docs.forEach(doc => {
+              Object.keys(doc).forEach(key => {
+                if (key !== 'id') {
+                  fields.add(key);
+                  
+                  const value = doc[key];
+                  if (!fieldTypes[key]) {
+                    if (typeof value === 'string') fieldTypes[key] = 'string';
+                    else if (typeof value === 'number') fieldTypes[key] = 'number';
+                    else if (typeof value === 'boolean') fieldTypes[key] = 'boolean';
+                    else if (Array.isArray(value)) fieldTypes[key] = 'array';
+                    else if (value && value.seconds) fieldTypes[key] = 'timestamp';
+                    else if (typeof value === 'object') fieldTypes[key] = 'object';
+                    else fieldTypes[key] = 'unknown';
+                  }
+
+                  if (key.endsWith('Id') && key !== 'id') {
+                    const refCollection = key.replace('Id', '') + 's';
+                    if (key === 'userId') {
+                      foreignKeys.push({ field: key, references: 'users', type: 'many-to-one' });
+                    } else if (key === 'parentId') {
+                      foreignKeys.push({ field: key, references: collectionName, type: 'self-reference' });
+                    } else if (collectionNames.includes(refCollection)) {
+                      foreignKeys.push({ field: key, references: refCollection, type: 'many-to-one' });
+                    } else if (key.includes('Record')) {
+                      foreignKeys.push({ field: key, references: 'records', type: 'many-to-many' });
+                    }
+                  }
+                }
+              });
+            });
+
+            schema.collections[collectionName] = {
+              name: collectionName,
+              fields: Array.from(fields).map(field => ({
+                name: field,
+                type: fieldTypes[field] || 'unknown',
+                isPrimaryKey: field === 'id' || field === 'uid',
+                isForeignKey: field.endsWith('Id') && field !== 'id'
+              })),
+              foreignKeys: foreignKeys,
+              documentCount: docs.length,
+              icon: getCollectionIcon(collectionName),
+              color: getCollectionColor(collectionName)
+            };
+
+            schema.stats[collectionName] = {
+              count: snapshot.size,
+              sampled: docs.length
+            };
+          } catch (err) {
+            console.error(`Error analyzing ${collectionName}:`, err);
+            schema.collections[collectionName] = {
+              name: collectionName,
+              fields: [],
+              foreignKeys: [],
+              documentCount: 0,
+              icon: getCollectionIcon(collectionName),
+              color: getCollectionColor(collectionName),
+              error: err.message
+            };
+          }
+        }
+
+        return schema;
+      };
+
+      const getCollectionIcon = (name) => {
+        const icons = {
+          users: '👥',
+          systems: '🗄️',
+          categories: '📁',
+          records: '📄',
+          relations: '🔗',
+          customFields: '🏷️',
+          relationTypes: '🔗'
+        };
+        return icons[name] || '📦';
+      };
+
+      const getCollectionColor = (name) => {
+        const colors = {
+          users: 'bg-blue-500',
+          systems: 'bg-purple-500',
+          categories: 'bg-green-500',
+          records: 'bg-orange-500',
+          relations: 'bg-cyan-500',
+          customFields: 'bg-pink-500',
+          relationTypes: 'bg-indigo-500'
+        };
+        return colors[name] || 'bg-gray-500';
+      };
+
+      const ERDiagram = () => {
+        const svgRef = useRef(null);
+
+        // Entity positions (arranged in a meaningful layout)
+        const entityPositions = {
+          users: { x: 50, y: 50 },
+          systems: { x: 300, y: 50 },
+          categories: { x: 550, y: 50 },
+          records: { x: 550, y: 250 },
+          customFields: { x: 800, y: 250 },
+          relations: { x: 550, y: 450 },
+          relationTypes: { x: 300, y: 450 }
+        };
+
+        const Entity = ({ name, data, x, y }) => (
+          <g transform={`translate(${x}, ${y})`} className="entity-box">
+            <rect
+              width="200"
+              height="140"
+              rx="8"
+              className="fill-white dark:fill-gray-800 stroke-gray-300 dark:stroke-gray-600"
+              strokeWidth="2"
+            />
+            <g transform="translate(10, 10)">
+              <text className="fill-gray-900 dark:fill-gray-100 font-bold text-sm" fontSize="16">
+                <tspan x="5" y="15">{data.icon} {data.name}</tspan>
+              </text>
+              <line x1="0" y1="25" x2="180" y2="25" className="stroke-gray-300 dark:stroke-gray-600" strokeWidth="1" />
+              {data.fields.slice(0, 5).map((field, idx) => (
+                <text key={idx} fontSize="11" y={45 + idx * 18}>
+                  <tspan
+                    x="5"
+                    className={
+                      field.isPrimaryKey ? 'fill-blue-600 dark:fill-blue-400 font-bold' :
+                      field.isForeignKey ? 'fill-green-600 dark:fill-green-400' :
+                      'fill-gray-700 dark:fill-gray-300'
+                    }
+                  >
+                    {field.name} {field.isPrimaryKey ? '(PK)' : field.isForeignKey ? '(FK)' : ''}
+                  </tspan>
+                </text>
+              ))}
+              {data.fields.length > 5 && (
+                <text fontSize="11" y={45 + 5 * 18} x="5" className="fill-gray-500">
+                  ... +{data.fields.length - 5} more
+                </text>
+              )}
+            </g>
+          </g>
+        );
+
+        const Connection = ({ from, to, label }) => {
+          const fromPos = entityPositions[from];
+          const toPos = entityPositions[to];
+          
+          if (!fromPos || !toPos) return null;
+
+          const fromX = fromPos.x + 100;
+          const fromY = fromPos.y + 70;
+          const toX = toPos.x + 100;
+          const toY = toPos.y + 70;
+
+          const midX = (fromX + toX) / 2;
+          const midY = (fromY + toY) / 2;
+
+          return (
+            <g>
+              <path
+                d={`M ${fromX} ${fromY} Q ${midX} ${midY} ${toX} ${toY}`}
+                className="relation-line"
+              />
+              <text
+                x={midX}
+                y={midY - 5}
+                fontSize="10"
+                className="fill-gray-600 dark:fill-gray-400"
+                textAnchor="middle"
+              >
+                {label}
+              </text>
+            </g>
+          );
+        };
+
+        const relationships = [
+          { from: 'users', to: 'systems', label: '1:N' },
+          { from: 'systems', to: 'categories', label: '1:N' },
+          { from: 'categories', to: 'records', label: '1:N' },
+          { from: 'records', to: 'customFields', label: '1:N' },
+          { from: 'records', to: 'relations', label: 'N:M' },
+          { from: 'relationTypes', to: 'relations', label: '1:N' }
+        ];
+
+        return (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 overflow-x-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Entity-Relationship Diagram</h2>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              >
+                🔄 Refresh
+              </button>
+            </div>
+            
+            <svg ref={svgRef} width="1050" height="600" className="mx-auto">
+              {/* Draw connections first (behind entities) */}
+              {relationships.map((rel, idx) => (
+                <Connection key={idx} {...rel} />
+              ))}
+              
+              {/* Draw entities */}
+              {Object.entries(collections).map(([key, data]) => {
+                const pos = entityPositions[key];
+                if (!pos) return null;
+                return <Entity key={key} name={key} data={data} x={pos.x} y={pos.y} />;
+              })}
+            </svg>
+
+            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+              <h3 className="font-semibold mb-3 text-sm">Legend</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-blue-600 dark:text-blue-400 font-bold">PK</span>
+                  <span className="text-gray-600 dark:text-gray-400">Primary Key</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-green-600 dark:text-green-400 font-bold">FK</span>
+                  <span className="text-gray-600 dark:text-gray-400">Foreign Key</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">1:N</span>
+                  <span className="text-gray-600 dark:text-gray-400">One-to-Many</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">N:M</span>
+                  <span className="text-gray-600 dark:text-gray-400">Many-to-Many</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const StatisticsTab = () => {
+        const collectionCount = Object.keys(collections).length;
+        const totalDocuments = Object.values(stats).reduce((sum, s) => sum + s.count, 0);
+
+        return (
+          <div className="space-y-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-4">
+                  <div className="text-4xl">📊</div>
+                  <div>
+                    <div className="text-3xl font-bold text-blue-600">{collectionCount}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Collections</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-4">
+                  <div className="text-4xl">📄</div>
+                  <div>
+                    <div className="text-3xl font-bold text-green-600">{totalDocuments}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Your Documents</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-4">
+                  <div className="text-4xl">👤</div>
+                  <div>
+                    <div className="text-sm font-bold text-purple-600 truncate max-w-[180px]">{currentUser?.email}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Current User</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Detailed Collection Stats */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+              <h2 className="text-2xl font-bold mb-6">Collection Details</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Object.entries(collections).map(([key, collection]) => (
+                  <div key={key} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`${collection.color} p-2 rounded-lg text-2xl`}>
+                        {collection.icon}
+                      </div>
+                      <div>
+                        <h3 className="font-bold">{collection.name}</h3>
+                        <p className="text-xs text-gray-500">
+                          {stats[key]?.count || 0} documents
+                        </p>
+                      </div>
+                    </div>
+
+                    {collection.error ? (
+                      <div className="text-xs text-red-600 dark:text-red-400">
+                        Error: {collection.error}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-1 mb-3">
+                          <div className="text-xs font-semibold text-gray-700 dark:text-gray-300">Fields ({collection.fields.length})</div>
+                          <div className="max-h-32 overflow-y-auto space-y-1">
+                            {collection.fields.map((field, idx) => (
+                              <div key={idx} className="text-xs font-mono bg-gray-50 dark:bg-gray-900 px-2 py-1 rounded flex items-center justify-between">
+                                <span className={
+                                  field.isPrimaryKey ? 'text-blue-600 dark:text-blue-400 font-bold' :
+                                  field.isForeignKey ? 'text-green-600 dark:text-green-400' :
+                                  'text-gray-700 dark:text-gray-300'
+                                }>
+                                  {field.name}
+                                  {field.isPrimaryKey ? ' (PK)' : ''}
+                                  {field.isForeignKey ? ' (FK)' : ''}
+                                </span>
+                                <span className="text-gray-500 text-xs">{field.type}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {collection.foreignKeys && collection.foreignKeys.length > 0 && (
+                          <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <p className="text-xs font-semibold mb-1">Relationships</p>
+                            <div className="space-y-1">
+                              {collection.foreignKeys.map((fk, idx) => (
+                                <div key={idx} className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                  <span>→</span>
+                                  <span className="font-mono text-green-600 dark:text-green-400">{fk.field}</span>
+                                  <span>refs</span>
+                                  <span className="font-semibold">{fk.references}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      if (loading) {
+        return (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="spinner mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Analyzing database structure...</p>
+          </div>
+        );
+      }
+
+      if (error) {
+        return (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
+            <div className="text-4xl mb-3">⚠️</div>
+            <h3 className="font-bold text-lg mb-2 text-red-800 dark:text-red-300">Error</h3>
+            <p className="text-red-600 dark:text-red-400">{error}</p>
+            <a href="index.html" className="inline-block mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+              Go to Login
+            </a>
+          </div>
+        );
+      }
+
+      return (
+        <div>
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
+              <span className="text-4xl">🗄️</span>
+              Database Schema Documentation
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Visual representation and statistics of your Firestore database structure
+            </p>
+          </div>
+
+          {/* Tab Navigation */}
+          <nav className="mb-8">
+            <ul className="flex gap-4 border-b border-gray-200 dark:border-gray-700">
+              <li>
+                <button
+                  onClick={() => setActiveTab('diagram')}
+                  className={`tab-button px-4 py-2 border-b-2 border-transparent transition ${
+                    activeTab === 'diagram' ? 'active font-medium' : 'text-gray-600 dark:text-gray-400 hover:text-blue-600'
+                  }`}
+                >
+                  ER Diagram
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => setActiveTab('statistics')}
+                  className={`tab-button px-4 py-2 border-b-2 border-transparent transition ${
+                    activeTab === 'statistics' ? 'active font-medium' : 'text-gray-600 dark:text-gray-400 hover:text-blue-600'
+                  }`}
+                >
+                  Statistics
+                </button>
+              </li>
+            </ul>
+          </nav>
+
+          {/* Tab Content */}
+          {activeTab === 'diagram' && <ERDiagram />}
+          {activeTab === 'statistics' && <StatisticsTab />}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+
+  <footer class="text-center text-xs text-gray-500 py-6 border-t border-gray-200 dark:border-gray-800 mt-8">
+    <p>&copy; <span id="year"></span> Dynamic Categories | Made with ❤️</p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

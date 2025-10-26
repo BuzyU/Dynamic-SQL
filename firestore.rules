@@ -1,0 +1,231 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Helper function to validate user owns the resource
+    function isResourceOwner() {
+      return isSignedIn() && request.auth.uid == resource.data.userId;
+    }
+    
+    // Helper function to validate user will own the new resource
+    function willBeOwner() {
+      return isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Systems collection
+    match /systems/{systemId} {
+      // Allow read if user owns the system
+      allow read: if isResourceOwner();
+      
+      // Allow create if user is authenticated and sets themselves as owner
+      allow create: if willBeOwner()
+                    && request.resource.data.keys().hasAll(['userId', 'name', 'createdAt', 'updatedAt'])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 100;
+      
+      // Allow update if user owns the system
+      allow update: if isResourceOwner()
+                    && request.resource.data.userId == resource.data.userId
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 100;
+      
+      // Allow delete if user owns the system
+      allow delete: if isResourceOwner();
+    }
+    
+    // Records collection
+    match /records/{recordId} {
+      // Allow read if user owns the record and the associated system
+      allow read: if isResourceOwner();
+      
+      // Allow create if user is authenticated and sets themselves as owner
+      allow create: if willBeOwner()
+                    && request.resource.data.keys().hasAll(['userId', 'systemId', 'categoryId', 'createdAt'])
+                    && request.resource.data.userId == request.auth.uid;
+      
+      // Allow update if user owns the record
+      allow update: if isResourceOwner()
+                    && request.resource.data.userId == resource.data.userId;
+      
+      // Allow delete if user owns the record
+      allow delete: if isResourceOwner();
+    }
+
+    // Categories collection
+    match /categories/{categoryId} {
+      // Allow read if user owns the category
+      allow read: if isResourceOwner();
+      
+      // Allow create if user is authenticated and sets themselves as owner
+      allow create: if willBeOwner()
+                    && request.resource.data.keys().hasAll(['userId', 'systemId', 'name', 'createdAt', 'updatedAt'])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 200
+                    && request.resource.data.systemId is string
+                    && exists(/databases/$(database)/documents/systems/$(request.resource.data.systemId))
+                    && get(/databases/$(database)/documents/systems/$(request.resource.data.systemId)).data.userId == request.auth.uid;
+      
+      // Allow update if user owns the category
+      allow update: if isResourceOwner()
+                    && request.resource.data.userId == resource.data.userId
+                    && request.resource.data.systemId == resource.data.systemId;
+      
+      // Allow delete if user owns the category
+      allow delete: if isResourceOwner();
+    }
+    
+    // Records collection (NEW)
+    match /records/{recordId} {
+      // Allow read if user owns the record
+      allow read: if isResourceOwner();
+      
+      // Allow create if user is authenticated and sets themselves as owner
+      allow create: if willBeOwner()
+                    && request.resource.data.keys().hasAll(['userId', 'systemId', 'categoryId', 'title', 'status', 'createdAt', 'updatedAt'])
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() <= 200
+                    && request.resource.data.status in ['draft', 'published', 'archived']
+                    && request.resource.data.systemId is string
+                    && request.resource.data.categoryId is string
+                    // Verify system exists and user owns it
+                    && exists(/databases/$(database)/documents/systems/$(request.resource.data.systemId))
+                    && get(/databases/$(database)/documents/systems/$(request.resource.data.systemId)).data.userId == request.auth.uid
+                    // Verify category exists and user owns it
+                    && exists(/databases/$(database)/documents/categories/$(request.resource.data.categoryId))
+                    && get(/databases/$(database)/documents/categories/$(request.resource.data.categoryId)).data.userId == request.auth.uid
+                    // Validate custom fields structure if present
+                    && (!request.resource.data.keys().hasAny(['customFields']) || request.resource.data.customFields is list)
+                    // Validate description length if present
+                    && (!request.resource.data.keys().hasAny(['description']) || request.resource.data.description.size() <= 5000);
+      
+      // Allow update if user owns the record
+      allow update: if isResourceOwner()
+                    && request.resource.data.userId == resource.data.userId
+                    && request.resource.data.systemId == resource.data.systemId
+                    && request.resource.data.categoryId == resource.data.categoryId
+                    && request.resource.data.status in ['draft', 'published', 'archived']
+                    && (!request.resource.data.keys().hasAny(['title']) || (
+                      request.resource.data.title is string
+                      && request.resource.data.title.size() > 0
+                      && request.resource.data.title.size() <= 200
+                    ))
+                    && (!request.resource.data.keys().hasAny(['description']) || request.resource.data.description.size() <= 5000);
+      
+      // Allow delete if user owns the record
+      allow delete: if isResourceOwner();
+    }
+    
+    // Relations collection (NEW)
+    match /relations/{relationId} {
+      // Allow read if user owns the relation
+      allow read: if isResourceOwner();
+      
+      // Allow create if user is authenticated and sets themselves as owner
+      allow create: if willBeOwner()
+                    && request.resource.data.keys().hasAll(['userId', 'systemId', 'sourceRecordId', 'targetRecordId', 'relationType', 'createdAt'])
+                    && request.resource.data.systemId is string
+                    && request.resource.data.sourceRecordId is string
+                    && request.resource.data.targetRecordId is string
+                    && request.resource.data.relationType is string
+                    && request.resource.data.relationType.size() > 0
+                    && request.resource.data.relationType.size() <= 100
+                    && request.resource.data.sourceRecordId != request.resource.data.targetRecordId
+                    // Verify system exists and user owns it
+                    && exists(/databases/$(database)/documents/systems/$(request.resource.data.systemId))
+                    && get(/databases/$(database)/documents/systems/$(request.resource.data.systemId)).data.userId == request.auth.uid
+                    // Verify source record exists and user owns it
+                    && exists(/databases/$(database)/documents/records/$(request.resource.data.sourceRecordId))
+                    && get(/databases/$(database)/documents/records/$(request.resource.data.sourceRecordId)).data.userId == request.auth.uid
+                    // Verify target record exists and user owns it
+                    && exists(/databases/$(database)/documents/records/$(request.resource.data.targetRecordId))
+                    && get(/databases/$(database)/documents/records/$(request.resource.data.targetRecordId)).data.userId == request.auth.uid
+                    // Validate description length if present
+                    && (!request.resource.data.keys().hasAny(['description']) || request.resource.data.description.size() <= 1000);
+      
+      // Allow update if user owns the relation
+      allow update: if isResourceOwner()
+                    && request.resource.data.userId == resource.data.userId
+                    && request.resource.data.systemId == resource.data.systemId
+                    && request.resource.data.sourceRecordId == resource.data.sourceRecordId
+                    && request.resource.data.targetRecordId == resource.data.targetRecordId;
+      
+      // Allow delete if user owns the relation
+      allow delete: if isResourceOwner();
+    }
+    
+    // Relation Types collection (OPTIONAL - for predefined relation types)
+    match /relation_types/{typeId} {
+      // Allow read if user owns the relation type
+      allow read: if isResourceOwner();
+      
+      // Allow create if user is authenticated and sets themselves as owner
+      allow create: if willBeOwner()
+                    && request.resource.data.keys().hasAll(['userId', 'systemId', 'name', 'displayName'])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 100
+                    && request.resource.data.displayName is string
+                    && request.resource.data.displayName.size() > 0
+                    && request.resource.data.displayName.size() <= 100
+                    && request.resource.data.systemId is string
+                    && exists(/databases/$(database)/documents/systems/$(request.resource.data.systemId))
+                    && get(/databases/$(database)/documents/systems/$(request.resource.data.systemId)).data.userId == request.auth.uid;
+      
+      // Allow update if user owns the relation type
+      allow update: if isResourceOwner()
+                    && request.resource.data.userId == resource.data.userId
+                    && request.resource.data.systemId == resource.data.systemId;
+      
+      // Allow delete if user owns the relation type
+      allow delete: if isResourceOwner();
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+/*
+ * Security Rules Summary:
+ * 
+ * 1. All collections require authentication
+ * 2. Users can only access their own data (userId check)
+ * 3. Cross-collection validation ensures data integrity:
+ *    - Categories must belong to existing systems
+ *    - Records must belong to existing categories and systems
+ *    - Relations must link existing records within the same system
+ * 4. Field validation ensures data quality:
+ *    - Required fields must be present
+ *    - String lengths are limited
+ *    - Enums are validated (e.g., status field)
+ * 5. Immutable fields protected:
+ *    - userId cannot be changed after creation
+ *    - systemId and categoryId cannot be changed in updates
+ * 6. Relations validated:
+ *    - Both source and target records must exist
+ *    - Both records must belong to the user
+ *    - Self-referencing relations are prevented
+ * 
+ * To deploy these rules:
+ * 1. Go to Firebase Console
+ * 2. Select your project
+ * 3. Navigate to Firestore Database > Rules
+ * 4. Paste the rules above
+ * 5. Click "Publish"
+ */

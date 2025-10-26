@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dynamic Categories - Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="data:,">
+  <script defer src="theme.js"></script>
+  <script defer src="ui.js"></script>
+  <script type="module" defer src="firebase-config.js"></script>
+  <script type="module" defer src="auth.js"></script>
+  <style>
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .glass {
+      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.95);
+    }
+    .dark .glass {
+      background: rgba(31, 41, 55, 0.95);
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+    .float {
+      animation: float 6s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <!-- Theme Toggle -->
+  <div class="absolute top-4 right-4 z-10">
+    <button id="themeToggle" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg text-sm hover:shadow-xl transition">
+      🌙 Toggle Theme
+    </button>
+  </div>
+
+  <main class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-6xl grid md:grid-cols-2 gap-8 items-center">
+      <!-- Left Side - Hero -->
+      <div class="hidden md:block text-center">
+        <div class="float mb-8">
+          <div class="text-8xl mb-4">📁</div>
+          <h1 class="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Dynamic Categories
+          </h1>
+          <p class="text-lg text-gray-600 dark:text-gray-400 mb-6">
+            Organize your world with nested categories
+          </p>
+        </div>
+        
+        <div class="space-y-4 text-left max-w-md mx-auto">
+          <div class="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div class="text-2xl">🌳</div>
+            <div>
+              <h3 class="font-semibold mb-1">Hierarchical Structure</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Create unlimited nested categories</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div class="text-2xl">☁️</div>
+            <div>
+              <h3 class="font-semibold mb-1">Cloud Sync</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Access from anywhere, anytime</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div class="text-2xl">🔍</div>
+            <div>
+              <h3 class="font-semibold mb-1">Smart Search</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Find what you need instantly</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Side - Auth Form -->
+      <div class="w-full">
+        <div class="glass rounded-2xl shadow-2xl p-8 border border-gray-200 dark:border-gray-700">
+          <div class="md:hidden text-center mb-6">
+            <div class="text-5xl mb-3">📁</div>
+            <h1 class="text-2xl font-bold mb-2">Dynamic Categories</h1>
+          </div>
+
+          <h2 class="text-2xl font-semibold mb-6 text-center">Welcome Back</h2>
+          
+          <div class="space-y-4">
+            <!-- Google Sign In -->
+            <button id="googleSignIn" class="w-full inline-flex items-center justify-center gap-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-500 text-gray-900 dark:text-gray-100 py-3 rounded-lg transition-all shadow-md hover:shadow-lg font-medium">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 48 48">
+                <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.164,7.946,3.054l5.657-5.657C33.446,6.053,28.971,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.464,16.294,18.88,14,24,14c3.059,0,5.842,1.164,7.946,3.054l5.657-5.657C33.446,6.053,28.971,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.623-3.322-11.283-7.955l-6.529,5.025C9.49,39.556,16.227,44,24,44z"/>
+                <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.093,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C37.246,39.123,44,34.667,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+              </svg>
+              Continue with Google
+            </button>
+
+            <!-- Divider -->
+            <div class="relative text-center">
+              <span class="px-4 bg-white dark:bg-gray-800 relative z-10 text-sm text-gray-500">or continue with email</span>
+              <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-gray-200 dark:border-gray-700"></div>
+            </div>
+
+            <!-- Email/Password Form -->
+            <form id="emailAuthForm" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium mb-2" for="email">Email Address</label>
+                <input 
+                  type="email" 
+                  id="email" 
+                  required 
+                  placeholder="you@example.com" 
+                  autocomplete="email" 
+                  class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:border-blue-500 transition" 
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-2" for="password">Password</label>
+                <input 
+                  type="password" 
+                  id="password" 
+                  required 
+                  placeholder="••••••••" 
+                  autocomplete="current-password" 
+                  class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:border-blue-500 transition" 
+                />
+              </div>
+
+              <div class="flex items-center justify-between text-sm">
+                <label class="inline-flex items-center gap-2 cursor-pointer hover:text-blue-600 transition">
+                  <input type="checkbox" id="isRegister" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500" />
+                  <span>Create new account</span>
+                </label>
+                <button type="button" id="resetPassword" class="text-blue-600 dark:text-blue-400 hover:underline focus:outline-none">
+                  Forgot password?
+                </button>
+              </div>
+
+              <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                Continue
+              </button>
+            </form>
+
+            <!-- Error Display -->
+            <div id="authError" class="hidden rounded-lg p-4" role="status" aria-live="polite"></div>
+          </div>
+
+          <!-- Features List -->
+          <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div class="grid grid-cols-3 gap-3 text-center text-xs text-gray-600 dark:text-gray-400">
+              <div>
+                <div class="text-lg mb-1">🔒</div>
+                <div>Secure</div>
+              </div>
+              <div>
+                <div class="text-lg mb-1">⚡</div>
+                <div>Fast</div>
+              </div>
+              <div>
+                <div class="text-lg mb-1">📱</div>
+                <div>Responsive</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Privacy Note -->
+        <p class="text-center text-xs text-gray-500 mt-6">
+          By signing in, you agree to our Terms of Service and Privacy Policy
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="text-center text-xs text-gray-500 py-6">
+    <p>&copy; <span id="year"></span> Dynamic Categories | Made with ❤️</p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    
+    // Update form submit button text based on register checkbox
+    const isRegisterCheckbox = document.getElementById('isRegister');
+    const submitButton = document.querySelector('#emailAuthForm button[type="submit"]');
+    
+    isRegisterCheckbox?.addEventListener('change', (e) => {
+      if (submitButton) {
+        submitButton.textContent = e.target.checked ? 'Create Account' : 'Sign In';
+      }
+    });
+  </script>
+</body>
+</html>

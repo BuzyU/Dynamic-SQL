@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dynamic Categories - My Systems</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="data:,">
+  <script defer src="theme.js"></script>
+  <script defer src="ui.js"></script>
+  <script type="module" defer src="firebase-config.js"></script>
+  <script type="module" defer src="auth.js"></script>
+  <script type="module" defer src="systems.js"></script>
+  <style>
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .system-card {
+      transition: all 0.2s ease;
+    }
+    .system-card:hover {
+      transform: translateY(-4px);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <header class="border-b border-gray-200 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-800 z-10 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <h1 class="font-bold text-lg">📁 My Systems</h1>
+        <span id="systemCount" class="text-xs text-gray-500"></span>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="profile.html" class="text-sm hover:underline hidden sm:inline">Profile</a>
+        <button id="themeToggle" class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">🌙 Theme</button>
+        <button id="signOutBtn" class="px-3 py-1.5 rounded bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 text-sm hover:opacity-90">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Welcome Section -->
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold mb-2">Welcome back!</h2>
+      <p class="text-gray-600 dark:text-gray-400">Organize your categories into separate systems for better management.</p>
+    </div>
+
+    <!-- Add System Button -->
+    <div class="mb-6">
+      <button id="addSystemBtn" class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition shadow-lg hover:shadow-xl font-medium">
+        <span class="text-xl">➕</span>
+        <span>Create New System</span>
+      </button>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading" class="text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <p class="mt-4 text-gray-500">Loading systems...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="hidden text-center py-16">
+      <div class="text-8xl mb-4">🗂️</div>
+      <h3 class="text-2xl font-semibold mb-2">No Systems Yet</h3>
+      <p class="text-gray-500 mb-6">Create your first system to start organizing your categories</p>
+      <button class="create-system-trigger px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition font-medium">
+        Create Your First System
+      </button>
+    </div>
+
+    <!-- Systems Grid -->
+    <div id="systemsGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Systems will be rendered here -->
+    </div>
+  </main>
+
+  <!-- System Card Template -->
+  <template id="systemCardTemplate">
+    <div class="system-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 cursor-pointer border-2 border-transparent hover:border-blue-500 fade-in">
+      <div class="flex items-start justify-between mb-4">
+        <div class="text-4xl system-icon">📂</div>
+        <div class="flex items-center gap-2">
+          <button class="edit-system text-xs px-2 py-1 rounded bg-yellow-500 text-white hover:bg-yellow-600 transition" title="Edit" onclick="event.stopPropagation()">✏️</button>
+          <button class="delete-system text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 transition" title="Delete" onclick="event.stopPropagation()">🗑️</button>
+        </div>
+      </div>
+      
+      <h3 class="system-name text-xl font-bold mb-2 truncate"></h3>
+      <p class="system-description text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 min-h-[2.5rem]"></p>
+      
+      <div class="flex items-center justify-between text-xs text-gray-500 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex items-center gap-4">
+          <span class="category-count">📊 0 categories</span>
+        </div>
+        <span class="created-date"></span>
+      </div>
+    </div>
+  </template>
+
+  <footer class="text-center text-xs text-gray-500 py-6 border-t border-gray-200 dark:border-gray-800 mt-12">
+    <p>&copy; <span id="year"></span> Dynamic Categories | Made with ❤️</p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    
+    // Trigger add system modal from empty state
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('create-system-trigger')) {
+        document.getElementById('addSystemBtn')?.click();
+      }
+    });
+  </script>
+</body>
+</html>
