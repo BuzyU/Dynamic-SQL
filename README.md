@@ -41,7 +41,7 @@ cd Dynamic-SQL
 
 4. Open `index.html` in your browser
 
-## Structure
+## Structure 
 
 - `index.html` - Landing page and authentication
 - `systems.html` - Systems management
