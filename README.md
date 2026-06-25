@@ -10,7 +10,7 @@ A modern web application for managing hierarchical categories, systems, and reco
 - 🌗 Dark/Light Theme Support
 - 📱 Responsive Design
 - 📊 Systems Overview
-- 🗂️ Record Management
+- 🗂️ Record Management 
 - 🏷️ Custom Fields Support
 - 🔗 Relationship Management
 - 📚 Documentation with ER Diagrams
