@@ -2,7 +2,7 @@
 
 A modern web application for managing hierarchical categories, systems, and records with Firebase integration.
 
-## Features
+## Features 
 
 - 🔐 Secure Authentication with Firebase
 - 📁 Hierarchical Category Management
